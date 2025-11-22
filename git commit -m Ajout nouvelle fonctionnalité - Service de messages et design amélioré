@@ -1,0 +1,41 @@
+warning: in the working copy of 'src/main/webapp/index.jsp', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/src/main/webapp/index.jsp b/src/main/webapp/index.jsp[m
+[1mindex d773ad9..4a5d9d0 100644[m
+[1m--- a/src/main/webapp/index.jsp[m
+[1m+++ b/src/main/webapp/index.jsp[m
+[36m@@ -57,12 +57,14 @@[m
+ [m
+     <h2>Fonctionnalités implémentées :</h2>[m
+     <ul class="feature-list">[m
+[31m-        <li>Pipeline CI/CD complet</li>[m
+[31m-        <li>Intégration GitHub + Jenkins</li>[m
+[31m-        <li>Tests automatisés JUnit</li>[m
+[31m-        <li>Analyse qualité avec SonarQube</li>[m
+[31m-        <li>Déploiement automatique Tomcat</li>[m
+[31m-        <li>Gestion des branches Git</li>[m
+[32m+[m[32m        <li> Pipeline CI/CD complet</li>[m
+[32m+[m[32m        <li> Intégration GitHub + Jenkins</li>[m
+[32m+[m[32m        <li> Tests automatisés JUnit</li>[m
+[32m+[m[32m        <li> Analyse qualité avec SonarQube</li>[m
+[32m+[m[32m        <li> Déploiement automatique Tomcat</li>[m
+[32m+[m[32m        <li> Gestion des branches Git</li>[m
+[32m+[m[32m        <li> Nouveau design responsive</li>[m
+[32m+[m[32m        <li> Performances améliorées</li>[m
+     </ul>[m
+ [m
+     <h2>Calculatrice DevOps :</h2>[m
+[36m@@ -74,6 +76,14 @@[m
+     <p>15 + 25 = <strong><%= resultAdd %></strong></p>[m
+     <p>6 × 7 = <strong><%= resultMultiply %></strong></p>[m
+ [m
+[32m+[m[32m    <h2>Services DevOps :</h2>[m
+[32m+[m[32m    <%[m
+[32m+[m[32m        com.example.myjavaapp.services.MessageService messageService = new com.example.myjavaapp.services.MessageService();[m
+[32m+[m[32m    %>[m
+[32m+[m[32m    <p><strong><%= messageService.getWelcomeMessage() %></strong></p>[m
+[32m+[m[32m    <p><em><%= messageService.getDevOpsMessage() %></em></p>[m
+[32m+[m[32m    <p><%= messageService.getCurrentTime() %></p>[m
+[32m+[m
+     <div style="margin-top: 30px; padding: 15px; background: #f8f9fa; border-radius: 5px;">[m
+         <small>[m
+             <strong>Étudiant :</strong> Votre Nom<br>[m

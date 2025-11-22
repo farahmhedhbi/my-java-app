@@ -57,12 +57,14 @@
 
     <h2>Fonctionnalités implémentées :</h2>
     <ul class="feature-list">
-        <li>Pipeline CI/CD complet</li>
-        <li>Intégration GitHub + Jenkins</li>
-        <li>Tests automatisés JUnit</li>
-        <li>Analyse qualité avec SonarQube</li>
-        <li>Déploiement automatique Tomcat</li>
-        <li>Gestion des branches Git</li>
+        <li> Pipeline CI/CD complet</li>
+        <li> Intégration GitHub + Jenkins</li>
+        <li> Tests automatisés JUnit</li>
+        <li> Analyse qualité avec SonarQube</li>
+        <li> Déploiement automatique Tomcat</li>
+        <li> Gestion des branches Git</li>
+        <li> Nouveau design responsive</li>
+        <li> Performances améliorées</li>
     </ul>
 
     <h2>Calculatrice DevOps :</h2>
@@ -73,6 +75,14 @@
     %>
     <p>15 + 25 = <strong><%= resultAdd %></strong></p>
     <p>6 × 7 = <strong><%= resultMultiply %></strong></p>
+
+    <h2>Services DevOps :</h2>
+    <%
+        com.example.myjavaapp.services.MessageService messageService = new com.example.myjavaapp.services.MessageService();
+    %>
+    <p><strong><%= messageService.getWelcomeMessage() %></strong></p>
+    <p><em><%= messageService.getDevOpsMessage() %></em></p>
+    <p><%= messageService.getCurrentTime() %></p>
 
     <div style="margin-top: 30px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
         <small>
