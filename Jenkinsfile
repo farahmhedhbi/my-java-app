@@ -1,10 +1,10 @@
 pipeline {
     agent any
 
-    tools {
-        maven 'maven-3.9'
-        jdk 'openjdk-17'
-    }
+     tools {
+            maven 'maven 4.0'           // CORRECTION ICI
+            jdk 'openjdk version 17'    // CORRECTION ICI
+        }
 
     environment {
         SONAR_SCANNER_HOME = tool 'sonar-scanner'
