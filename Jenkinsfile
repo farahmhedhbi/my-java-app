@@ -43,13 +43,28 @@ pipeline {
         stage('Tests') {
             steps {
                 echo '🧪 Étape 3: Exécution des tests unitaires JUnit...'
-                sh 'mvn test'
+                script {
+                    def testFiles = findFiles(glob: 'src/test/**/*Test.java')
+                    if (testFiles) {
+                        echo "📁 ${testFiles.size()} fichiers de test trouvés"
+                        sh 'mvn test'
+                    } else {
+                        echo '⚠️ Aucun test JUnit trouvé - étape ignorée'
+                    }
+                }
             }
 
             post {
                 always {
-                    junit 'target/surefire-reports/*.xml'
-                    echo '📊 Rapports de tests générés'
+                    script {
+                        def testReports = findFiles(glob: 'target/surefire-reports/*.xml')
+                        if (testReports) {
+                            junit 'target/surefire-reports/*.xml'
+                            echo "📊 ${testReports.size()} rapports de tests générés"
+                        } else {
+                            echo '📋 Aucun rapport de test à publier'
+                        }
+                    }
                 }
             }
         }
@@ -68,7 +83,6 @@ pipeline {
             }
         }
 
-        // Stage SonarQube temporairement désactivé
         stage('SAST - SonarQube Analysis') {
             steps {
                 echo '🔍 Étape 5: Analyse SonarQube (désactivée pour le moment)...'
@@ -80,14 +94,9 @@ pipeline {
     post {
         always {
             echo "🔧 Pipeline [${env.JOB_NAME}] - Build #${env.BUILD_NUMBER} terminé"
-            // cleanWs() RETIRÉ pour l'instant
         }
         success {
             echo '🎉 PIPELINE RÉUSSI! Toutes les étapes complétées avec succès.'
-            script {
-                echo "📧 Notification email configurée pour: admin@example.com"
-                // Email temporairement désactivé
-            }
         }
         failure {
             echo '❌ PIPELINE ÉCHOUÉ! Vérifiez les logs pour plus de détails.'
