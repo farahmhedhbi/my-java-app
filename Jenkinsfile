@@ -7,7 +7,7 @@ pipeline {
     }
 
     environment {
-        TOMCAT_URL = 'http://192.168.56.128:8080'
+        TOMCAT_URL = 'http://localhost:8080'
         GIT_REPO = 'https://github.com/farahmhedhbi/my-java-app.git'
     }
 
