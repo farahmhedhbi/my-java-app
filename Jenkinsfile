@@ -2,12 +2,12 @@ pipeline {
     agent any
 
     tools {
-        maven 'maven 4.0'
+        maven 'maven 3.9'
         jdk 'openjdk version 17'
     }
 
     environment {
-        TOMCAT_URL = 'http://192.168.56.128:8080'
+        TOMCAT_URL = 'http://localhost:8080'
         GIT_REPO = 'https://github.com/farahmhedhbi/my-java-app.git'
     }
 
