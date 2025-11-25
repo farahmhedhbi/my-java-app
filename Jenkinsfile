@@ -17,7 +17,6 @@ pipeline {
             steps {
                 echo '🔍 Vérification de la connectivité SonarQube...'
                 script {
-                    // Test de connectivité SIMPLIFIÉ
                     try {
                         def response = sh(
                             script: 'curl -s http://localhost:9000/api/system/status',
@@ -28,13 +27,23 @@ pipeline {
 
                         if (response.contains('"status":"UP"')) {
                             echo "✅ SonarQube est accessible et opérationnel"
-                        } else {
-                            echo "⚠️ SonarQube répond mais statut inattendu"
+
+                            // Test d'authentification avec admin/farah
+                            def authTest = sh(
+                                script: 'curl -s -u admin:farah http://localhost:9000/api/authentication/validate',
+                                returnStdout: true
+                            ).trim()
+
+                            echo "🔐 Test auth: ${authTest}"
+
+                            if (authTest.contains('"valid":true')) {
+                                echo "✅ Authentification admin/farah fonctionne"
+                            } else {
+                                echo "❌ Authentification admin/farah échoue"
+                            }
                         }
                     } catch (Exception e) {
-                        echo "❌ Impossible de contacter SonarQube: ${e.getMessage()}"
-                        echo "🔧 Vérifiez que SonarQube est démarré: http://localhost:9000"
-                        // Ne pas arrêter le pipeline pour cette vérification
+                        echo "⚠️ Erreur lors de la vérification: ${e.getMessage()}"
                     }
                 }
             }
@@ -99,14 +108,13 @@ pipeline {
             steps {
                 echo '🔍 Étape 4: Analyse de qualité du code avec SonarQube...'
                 script {
-                    // Méthode SIMPLIFIÉE et directe
                     sh """
                     mvn sonar:sonar \
                       -Dsonar.projectKey=my-java-app \
                       -Dsonar.projectName='My Java Application' \
                       -Dsonar.host.url=http://localhost:9000 \
                       -Dsonar.login=admin \
-                      -Dsonar.password=admin \
+                      -Dsonar.password=farah \
                       -Dsonar.java.coveragePlugin=jacoco \
                       -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
                       -Dsonar.sourceEncoding=UTF-8
@@ -123,9 +131,6 @@ pipeline {
                 }
                 failure {
                     echo '❌ Échec de l analyse SonarQube!'
-                    script {
-                        echo '🔧 Debug: Vérifiez les identifiants SonarQube (admin/admin)'
-                    }
                 }
             }
         }
@@ -140,11 +145,6 @@ pipeline {
                 success {
                     echo '✅ Package WAR créé avec succès!'
                     archiveArtifacts artifacts: 'target/*.war', fingerprint: true
-
-                    script {
-                        def warFile = sh(script: 'ls target/*.war', returnStdout: true).trim()
-                        echo "📁 Fichier WAR généré: ${warFile}"
-                    }
                 }
             }
         }
