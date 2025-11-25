@@ -10,7 +10,6 @@ pipeline {
         TOMCAT_URL = 'http://localhost:8080'
         GIT_REPO = 'https://github.com/farahmhedhbi/my-java-app.git'
         SONARQUBE_URL = 'http://localhost:9000'
-        SONAR_TOKEN = credentials('sonarqube-token') // Si vous avez créé les credentials
     }
 
     stages {
@@ -73,14 +72,13 @@ pipeline {
             steps {
                 echo '🔍 Étape 4: Analyse de qualité du code avec SonarQube...'
                 script {
-                    // Méthode directe sans withSonarQubeEnv
+                    // Utilisation du token SonarQube généré
                     sh """
                     mvn sonar:sonar \
                       -Dsonar.projectKey=my-java-app \
                       -Dsonar.projectName='My Java Application' \
                       -Dsonar.host.url=http://localhost:9000 \
-                      -Dsonar.login=admin \
-                      -Dsonar.password=admin \
+                      -Dsonar.login=c3ec4e697b6c8a1ccab97cf2d282c1b41468ec88 \
                       -Dsonar.java.coveragePlugin=jacoco \
                       -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
                     """
@@ -101,7 +99,6 @@ pipeline {
             steps {
                 echo '🚦 Étape 5: Vérification de la Quality Gate...'
                 script {
-                    // Temporairement désactivé jusqu'à configuration complète
                     echo '📋 Quality Gate désactivée pour le moment'
                 }
             }
