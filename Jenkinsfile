@@ -13,37 +13,24 @@ pipeline {
     }
 
     stages {
-        stage('Vérification SonarQube') {
+        stage('Vérification Infrastructures') {
             steps {
-                echo '🔍 Vérification de la connectivité SonarQube...'
+                echo '🔍 Vérification des services...'
                 script {
-                    try {
-                        def response = sh(
-                            script: 'curl -s http://localhost:9000/api/system/status',
-                            returnStdout: true
-                        ).trim()
+                    // Vérification SonarQube
+                    def sonarResponse = sh(script: 'curl -s http://localhost:9000/api/system/status', returnStdout: true).trim()
+                    if (sonarResponse.contains('"status":"UP"')) {
+                        echo "✅ SonarQube: Opérationnel"
+                    } else {
+                        echo "❌ SonarQube: Hors service"
+                    }
 
-                        echo "📡 Réponse SonarQube: ${response}"
-
-                        if (response.contains('"status":"UP"')) {
-                            echo "✅ SonarQube est accessible et opérationnel"
-
-                            // Test d'authentification avec admin/farah
-                            def authTest = sh(
-                                script: 'curl -s -u admin:farah http://localhost:9000/api/authentication/validate',
-                                returnStdout: true
-                            ).trim()
-
-                            echo "🔐 Test auth: ${authTest}"
-
-                            if (authTest.contains('"valid":true')) {
-                                echo "✅ Authentification admin/farah fonctionne"
-                            } else {
-                                echo "❌ Authentification admin/farah échoue"
-                            }
-                        }
-                    } catch (Exception e) {
-                        echo "⚠️ Erreur lors de la vérification: ${e.getMessage()}"
+                    // Vérification Tomcat
+                    def tomcatCode = sh(script: 'curl -s -o /dev/null -w "%{http_code}" http://localhost:8080', returnStdout: true).trim()
+                    if (tomcatCode == "200") {
+                        echo "✅ Tomcat: Opérationnel"
+                    } else {
+                        echo "❌ Tomcat: Hors service"
                     }
                 }
             }
@@ -52,9 +39,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo '🚀 Étape 1: Récupération du code depuis GitHub...'
-                git branch: 'main',
-                    url: "${GIT_REPO}"
-
+                git branch: 'main', url: "${GIT_REPO}"
                 script {
                     currentBuild.displayName = "BUILD #${env.BUILD_NUMBER}"
                 }
@@ -66,40 +51,17 @@ pipeline {
                 echo '🔨 Étape 2: Construction de l application avec Maven...'
                 sh 'mvn clean compile'
             }
-
-            post {
-                success {
-                    echo '✅ Build Maven réussi!'
-                }
-                failure {
-                    echo '❌ Échec du build Maven!'
-                }
-            }
         }
 
         stage('Tests & Coverage') {
             steps {
                 echo '🧪 Étape 3: Exécution des tests unitaires et analyse de couverture...'
-                script {
-                    try {
-                        sh 'mvn test jacoco:report'
-                        echo '✅ Tests et couverture exécutés avec succès'
-                    } catch (Exception e) {
-                        echo '⚠️ Aucun test trouvé ou erreur lors de l exécution - étape ignorée'
-                    }
-                }
+                sh 'mvn test jacoco:report'
             }
 
             post {
                 always {
-                    script {
-                        try {
-                            junit 'target/surefire-reports/*.xml'
-                            echo '📊 Rapports de tests publiés'
-                        } catch (Exception e) {
-                            echo '📋 Aucun rapport de test à publier'
-                        }
-                    }
+                    junit 'target/surefire-reports/*.xml'
                 }
             }
         }
@@ -107,31 +69,16 @@ pipeline {
         stage('SAST - SonarQube Analysis') {
             steps {
                 echo '🔍 Étape 4: Analyse de qualité du code avec SonarQube...'
-                script {
-                    sh """
-                    mvn sonar:sonar \
-                      -Dsonar.projectKey=my-java-app \
-                      -Dsonar.projectName='My Java Application' \
-                      -Dsonar.host.url=http://localhost:9000 \
-                      -Dsonar.login=admin \
-                      -Dsonar.password=farah \
-                      -Dsonar.java.coveragePlugin=jacoco \
-                      -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
-                      -Dsonar.sourceEncoding=UTF-8
-                    """
-                }
-            }
-
-            post {
-                success {
-                    echo '✅ Analyse SonarQube terminée avec succès!'
-                    script {
-                        echo "📊 Rapport disponible: http://localhost:9000/dashboard?id=my-java-app"
-                    }
-                }
-                failure {
-                    echo '❌ Échec de l analyse SonarQube!'
-                }
+                sh """
+                mvn sonar:sonar \
+                  -Dsonar.projectKey=my-java-app \
+                  -Dsonar.projectName='My Java Application' \
+                  -Dsonar.host.url=http://localhost:9000 \
+                  -Dsonar.login=admin \
+                  -Dsonar.password=farah \
+                  -Dsonar.java.coveragePlugin=jacoco \
+                  -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+                """
             }
         }
 
@@ -143,8 +90,38 @@ pipeline {
 
             post {
                 success {
-                    echo '✅ Package WAR créé avec succès!'
                     archiveArtifacts artifacts: 'target/*.war', fingerprint: true
+                }
+            }
+        }
+
+        stage('Deploy to Tomcat') {
+            steps {
+                echo '🚀 Étape 6: Déploiement vers Tomcat...'
+                script {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'tomcat-credentials',
+                        passwordVariable: 'TOMCAT_PASSWORD',
+                        usernameVariable: 'TOMCAT_USER'
+                    )]) {
+                        sh """
+                        echo "Déploiement de l'application sur Tomcat..."
+                        curl -u ${TOMCAT_USER}:${TOMCAT_PASSWORD} \
+                             -X PUT \
+                             -F file=@target/my-java-app.war \
+                             http://localhost:8080/manager/text/deploy?path=/myapp
+                        """
+                    }
+                }
+            }
+
+            post {
+                success {
+                    echo '✅ Application déployée avec succès sur Tomcat!'
+                    echo '🌐 Accédez à: http://localhost:8080/myapp'
+                }
+                failure {
+                    echo '❌ Échec du déploiement Tomcat!'
                 }
             }
         }
@@ -156,7 +133,8 @@ pipeline {
         }
         success {
             echo '🎉 PIPELINE RÉUSSI! Toutes les étapes complétées avec succès.'
-            echo "📊 Rapport SonarQube: http://localhost:9000/dashboard?id=my-java-app"
+            echo "📊 SonarQube: http://localhost:9000/dashboard?id=my-java-app"
+            echo "🌐 Application: http://localhost:8080/myapp"
         }
         failure {
             echo '❌ PIPELINE ÉCHOUÉ! Vérifiez les logs pour plus de détails.'
