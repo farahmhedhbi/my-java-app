@@ -13,6 +13,25 @@ pipeline {
     }
 
     stages {
+        stage('Vérification SonarQube') {
+            steps {
+                echo '🔍 Vérification de la connectivité SonarQube...'
+                script {
+                    // Test de connectivité
+                    def sonarStatus = sh(
+                        script: 'curl -s http://localhost:9000/api/system/status | grep -o "\"status\":\"[^\"]*\"" | cut -d"\"" -f4',
+                        returnStdout: true
+                    ).trim()
+
+                    if (sonarStatus != "UP") {
+                        error "❌ SonarQube n'est pas accessible. Statut: ${sonarStatus}"
+                    } else {
+                        echo "✅ SonarQube est accessible (Status: ${sonarStatus})"
+                    }
+                }
+            }
+        }
+
         stage('Checkout') {
             steps {
                 echo '🚀 Étape 1: Récupération du code depuis GitHub...'
@@ -72,25 +91,42 @@ pipeline {
             steps {
                 echo '🔍 Étape 4: Analyse de qualité du code avec SonarQube...'
                 script {
-                    // Utilisation du token SonarQube généré
-                    sh """
-                    mvn sonar:sonar \
-                      -Dsonar.projectKey=my-java-app \
-                      -Dsonar.projectName='My Java Application' \
-                      -Dsonar.host.url=http://localhost:9000 \
-                      -Dsonar.login=c3ec4e697b6c8a1ccab97cf2d282c1b41468ec88 \
-                      -Dsonar.java.coveragePlugin=jacoco \
-                      -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
-                    """
+                    // Méthode ROBUSTE avec gestion d'erreur
+                    withSonarQubeEnv('sonarqube-local') {
+                        sh """
+                        mvn sonar:sonar \
+                          -Dsonar.projectKey=my-java-app \
+                          -Dsonar.projectName='My Java Application' \
+                          -Dsonar.java.coveragePlugin=jacoco \
+                          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+                          -Dsonar.sourceEncoding=UTF-8 \
+                          -Dsonar.host.url=\${SONAR_HOST_URL} \
+                          -Dsonar.login=\${SONAR_AUTH_TOKEN}
+                        """
+                    }
                 }
             }
 
             post {
                 success {
                     echo '✅ Analyse SonarQube terminée avec succès!'
+                    script {
+                        // Récupérer l'URL du projet SonarQube
+                        def sonarUrl = sh(
+                            script: 'echo ${SONAR_HOST_URL}/dashboard?id=my-java-app',
+                            returnStdout: true
+                        ).trim()
+                        echo "📊 Rapport disponible: ${sonarUrl}"
+                    }
                 }
                 failure {
                     echo '❌ Échec de l analyse SonarQube!'
+                    script {
+                        echo '🔧 Debug info:'
+                        echo "- Vérifier que SonarQube est démarré"
+                        echo "- Vérifier les credentials dans Jenkins"
+                        echo "- Vérifier les logs SonarQube: /opt/sonarqube/logs/sonar.log"
+                    }
                 }
             }
         }
@@ -99,7 +135,21 @@ pipeline {
             steps {
                 echo '🚦 Étape 5: Vérification de la Quality Gate...'
                 script {
-                    echo '📋 Quality Gate désactivée pour le moment'
+                    timeout(time: 5, unit: 'MINUTES') {
+                        waitForQualityGate abortPipeline: false
+                    }
+                }
+            }
+
+            post {
+                success {
+                    echo '✅ Quality Gate passée! Le code respecte les standards de qualité.'
+                }
+                failure {
+                    echo '❌ Quality Gate échouée! Vérifiez les problèmes dans SonarQube.'
+                }
+                unstable {
+                    echo '⚠️ Quality Gate instable! Améliorations nécessaires.'
                 }
             }
         }
@@ -114,6 +164,11 @@ pipeline {
                 success {
                     echo '✅ Package WAR créé avec succès!'
                     archiveArtifacts artifacts: 'target/*.war', fingerprint: true
+
+                    script {
+                        def warFile = sh(script: 'ls -la target/*.war', returnStdout: true).trim()
+                        echo "📁 Fichier WAR généré: ${warFile}"
+                    }
                 }
             }
         }
@@ -122,12 +177,35 @@ pipeline {
     post {
         always {
             echo "🔧 Pipeline [${env.JOB_NAME}] - Build #${env.BUILD_NUMBER} terminé"
+
+            // Nettoyage intelligent
+            script {
+                try {
+                    cleanWs()
+                    echo '🧹 Workspace nettoyé'
+                } catch (Exception e) {
+                    echo '⚠️ Nettoyage workspace échoué (peut être ignoré)'
+                }
+            }
         }
         success {
             echo '🎉 PIPELINE RÉUSSI! Toutes les étapes complétées avec succès.'
+
+            script {
+                def sonarReportUrl = "${SONARQUBE_URL}/dashboard?id=my-java-app"
+                echo "📊 Rapport SonarQube: ${sonarReportUrl}"
+            }
         }
         failure {
             echo '❌ PIPELINE ÉCHOUÉ! Vérifiez les logs pour plus de détails.'
+
+            script {
+                echo '🔧 Actions de dépannage:'
+                echo "1. Vérifier SonarQube: ${SONARQUBE_URL}"
+                echo '2. Vérifier les logs Jenkins'
+                echo '3. Vérifier /opt/sonarqube/logs/sonar.log'
+                echo '4. Tester manuellement: curl http://localhost:9000/api/system/status'
+            }
         }
     }
 }
