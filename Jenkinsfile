@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     tools {
-        maven 'maven 3.9'
-        jdk 'openjdk version 17'
+        maven 'maven-3.9'  // Changed from 'maven 4.0'
+        jdk 'openjdk-17'   // Changed from 'openjdk version 17'
     }
 
     environment {
